@@ -1,6 +1,5 @@
 "use client";
 
-import { verifiedFetch } from "@helia/verified-fetch";
 import { useState } from "react";
 import {
   BrowserProvider,
@@ -24,7 +23,7 @@ declare global {
   }
 }
 
-const BSC_TESTNET_CHAIN_ID = 97n;
+const BSC_TESTNET_CHAIN_ID = 97;
 
 type CertificateMetadata = {
   name?: string;
@@ -104,7 +103,7 @@ export default function Home() {
       setWalletAddress(address);
 
       if (
-        network.chainId ===
+        Number(network.chainId) ===
         BSC_TESTNET_CHAIN_ID
       ) {
         setNetworkName(
@@ -238,7 +237,7 @@ export default function Home() {
         await provider.getNetwork();
 
       if (
-        network.chainId !==
+        Number(network.chainId) !==
         BSC_TESTNET_CHAIN_ID
       ) {
         setIssueStatus(
@@ -338,7 +337,7 @@ export default function Home() {
         await provider.getNetwork();
 
       if (
-        network.chainId !==
+        Number(network.chainId) !==
         BSC_TESTNET_CHAIN_ID
       ) {
         setVerifyStatus(
@@ -364,7 +363,11 @@ export default function Home() {
       setCertificateOwner(owner);
       setCertificateURI(uri);
       try {
-        const response = await verifiedFetch(uri);
+        const cid = uri.replace("ipfs://", "");
+
+        const response = await fetch(
+          `/api/ipfs-metadata?cid=${encodeURIComponent(cid)}`,
+        );
 
         if (!response.ok) {
           throw new Error(
