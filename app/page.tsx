@@ -49,6 +49,15 @@ export default function Home() {
   const [recipient, setRecipient] =
     useState("");
 
+  const [recipientName, setRecipientName] =
+    useState("");
+
+  const [courseName, setCourseName] =
+    useState("Blockchain Technology");
+
+  const [issueDate, setIssueDate] =
+    useState("");
+
   const [metadataURI, setMetadataURI] =
     useState("");
 
@@ -191,6 +200,43 @@ export default function Home() {
     }
   }
 
+  async function createCertificateMetadata(
+    certificateId: string,
+  ) {
+    const response = await fetch(
+      "/api/create-metadata",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientName,
+          courseName,
+          issueDate,
+          certificateId,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+
+      throw new Error(
+        errorData.error ??
+          "Unable to create certificate metadata.",
+      );
+    }
+
+    const result = (await response.json()) as {
+      success: boolean;
+      cid: string;
+      metadataURI: string;
+    };
+
+    return result;
+  }
+
   async function issueCertificate() {
     try {
       setIssueStatus("");
@@ -203,6 +249,27 @@ export default function Home() {
         return;
       }
 
+      if (!recipientName.trim()) {
+        setIssueStatus(
+          "Enter the recipient's full name.",
+        );
+        return;
+      }
+
+      if (!courseName.trim()) {
+        setIssueStatus(
+          "Enter the course or program name.",
+        );
+        return;
+      }
+
+      if (!issueDate) {
+        setIssueStatus(
+          "Select the certificate issue date.",
+        );
+        return;
+      }
+
       if (
         !/^0x[a-fA-F0-9]{40}$/.test(
           recipient.trim(),
@@ -210,17 +277,6 @@ export default function Home() {
       ) {
         setIssueStatus(
           "Enter a valid recipient wallet address.",
-        );
-        return;
-      }
-
-      if (
-        !metadataURI
-          .trim()
-          .startsWith("ipfs://")
-      ) {
-        setIssueStatus(
-          "Metadata URI must begin with ipfs://",
         );
         return;
       }
@@ -274,14 +330,30 @@ export default function Home() {
       const nextId: bigint =
         await contract.nextTokenId();
 
+      const certificateId =
+        nextId.toString();
+
       setIssueStatus(
-        `Preparing Certificate #${nextId.toString()}...`,
+        `Creating metadata for Certificate #${certificateId}...`,
+      );
+
+      const metadataResult =
+        await createCertificateMetadata(
+          certificateId,
+        );
+
+      setMetadataURI(
+        metadataResult.metadataURI,
+      );
+
+      setIssueStatus(
+        "Metadata uploaded to IPFS. Preparing blockchain transaction...",
       );
 
       const transaction =
         await contract.issueCertificate(
           cleanRecipient,
-          metadataURI.trim(),
+          metadataResult.metadataURI,
         );
 
       setTransactionHash(
@@ -295,16 +367,28 @@ export default function Home() {
       await transaction.wait();
 
       setIssueStatus(
-        `Certificate #${nextId.toString()} issued successfully!`,
+        `Certificate #${certificateId} issued successfully!`,
       );
 
+      setRecipientName("");
+      setCourseName(
+        "Blockchain Technology",
+      );
+      setIssueDate("");
       setRecipient("");
-      setMetadataURI("");
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Certificate issuance error:",
+        error,
+      );
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unknown error";
 
       setIssueStatus(
-        "Certificate issuance failed or was rejected.",
+        `Certificate issuance failed: ${message}`,
       );
     }
   }
@@ -503,6 +587,35 @@ function getPublicIpfsUrl(uri: string) {
 
           <input
             type="text"
+            placeholder="Recipient full name"
+            value={recipientName}
+            onChange={(event) =>
+              setRecipientName(event.target.value)
+            }
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-3"
+          />
+
+          <input
+            type="text"
+            placeholder="Course or program"
+            value={courseName}
+            onChange={(event) =>
+              setCourseName(event.target.value)
+            }
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-3"
+          />
+
+          <input
+            type="date"
+            value={issueDate}
+            onChange={(event) =>
+              setIssueDate(event.target.value)
+            }
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-3"
+          />
+
+          <input
+            type="text"
             placeholder="Recipient wallet address"
             value={recipient}
             onChange={(event) =>
@@ -511,18 +624,6 @@ function getPublicIpfsUrl(uri: string) {
               )
             }
             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-3"
-          />
-
-          <input
-            type="text"
-            placeholder="ipfs://metadata-CID"
-            value={metadataURI}
-            onChange={(event) =>
-              setMetadataURI(
-                event.target.value,
-              )
-            }
-            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4"
           />
 
           <button
