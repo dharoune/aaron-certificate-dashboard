@@ -285,20 +285,20 @@ function createCertificateSvg({
 
   <!-- Issuer -->
   <line
-    x1="1000"
-    y1="810"
-    x2="1230"
-    y2="810"
+    x1="880"
+    y1="795"
+    x2="1050"
+    y2="795"
     stroke="#c9952e"
     stroke-width="2"
   />
 
   <text
-    x="1115"
-    y="845"
+    x="965"
+    y="830"
     text-anchor="middle"
     font-family="Georgia, serif"
-    font-size="22"
+    font-size="19"
     fill="#071a40"
   >
     Authorized Issuer
@@ -306,11 +306,11 @@ function createCertificateSvg({
 
   <!-- QR code -->
   <rect
-    x="1080"
-    y="640"
-    width="170"
-    height="170"
-    rx="8"
+    x="1135"
+    y="600"
+    width="115"
+    height="115"
+    rx="6"
     fill="#ffffff"
     stroke="#c9952e"
     stroke-width="3"
@@ -318,18 +318,18 @@ function createCertificateSvg({
 
   <image
     href="${qrCodeDataUrl}"
-    x="1090"
-    y="650"
-    width="150"
-    height="150"
+    x="1142"
+    y="607"
+    width="101"
+    height="101"
   />
 
   <text
-    x="1165"
-    y="835"
+    x="1192"
+    y="740"
     text-anchor="middle"
     font-family="Arial, sans-serif"
-    font-size="18"
+    font-size="14"
     font-weight="700"
     fill="#071a40"
   >
@@ -472,8 +472,9 @@ export async function POST(request: Request) {
     // 2. Upload certificate image to Pinata.
     const imageFormData = new FormData();
 
-    const svgBlob = new Blob(
+    const svgFile = new File(
       [svg],
+      `certificate-${certificateId}.svg`,
       {
         type: "image/svg+xml",
       },
@@ -481,8 +482,7 @@ export async function POST(request: Request) {
 
     imageFormData.append(
       "file",
-      svgBlob,
-      `certificate-${certificateId}.svg`,
+      svgFile,
     );
 
     imageFormData.append(
