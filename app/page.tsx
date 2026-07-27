@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserProvider,
   Contract,
+  JsonRpcProvider,
   getAddress,
 } from "ethers";
 
@@ -24,6 +25,8 @@ declare global {
 }
 
 const BSC_TESTNET_CHAIN_ID = 97;
+const BSC_TESTNET_RPC =
+  "https://bsc-testnet-dataseed.bnbchain.org";
 
 type CertificateMetadata = {
   name?: string;
@@ -89,6 +92,30 @@ export default function Home() {
 
   const [metadataError, setMetadataError] =
     useState("");
+
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search,
+      );
+
+    const tokenFromUrl =
+      params.get("tokenId");
+
+    if (
+      tokenFromUrl &&
+      /^\d+$/.test(tokenFromUrl)
+    ) {
+      setTokenId(tokenFromUrl);
+
+      void verifyCertificate(
+        tokenFromUrl,
+      );
+    }
+
+    // Run only when the page first opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function connectWallet() {
     try {
@@ -393,42 +420,33 @@ export default function Home() {
     }
   }
 
-  async function verifyCertificate() {
+  async function verifyCertificate(
+    certificateId?: string,
+  ) {
     try {
       setVerifyStatus("");
       setCertificateOwner("");
       setCertificateURI("");
+      setCertificateMetadata(null);
+      setMetadataError("");
 
-      if (!window.ethereum) {
-        setVerifyStatus(
-          "MetaMask is not installed.",
-        );
-        return;
-      }
+      const idToVerify =
+        certificateId ?? tokenId;
 
-      if (!/^\d+$/.test(tokenId.trim())) {
+      if (!/^\d+$/.test(idToVerify.trim())) {
         setVerifyStatus(
           "Enter a valid numeric Token ID.",
         );
         return;
       }
 
-      const provider = new BrowserProvider(
-        window.ethereum,
+      setVerifyStatus(
+        `Verifying Certificate #${idToVerify}...`,
       );
 
-      const network =
-        await provider.getNetwork();
-
-      if (
-        Number(network.chainId) !==
-        BSC_TESTNET_CHAIN_ID
-      ) {
-        setVerifyStatus(
-          "Please switch to BNB Smart Chain Testnet.",
-        );
-        return;
-      }
+      const provider = new JsonRpcProvider(
+        BSC_TESTNET_RPC,
+      );
 
       const contract = new Contract(
         AARON_CERTIFICATE_ADDRESS,
@@ -436,7 +454,7 @@ export default function Home() {
         provider,
       );
 
-      const id = BigInt(tokenId);
+      const id = BigInt(idToVerify);
 
       const owner: string =
         await contract.ownerOf(id);
@@ -446,11 +464,21 @@ export default function Home() {
 
       setCertificateOwner(owner);
       setCertificateURI(uri);
+
+      setVerifyStatus(
+        `Certificate #${idToVerify} is valid.`,
+      );
+
       try {
-        const cid = uri.replace("ipfs://", "");
+        const cid = uri.replace(
+          "ipfs://",
+          "",
+        );
 
         const response = await fetch(
-          `/api/ipfs-metadata?cid=${encodeURIComponent(cid)}`,
+          `/api/ipfs-metadata?cid=${encodeURIComponent(
+            cid,
+          )}`,
         );
 
         if (!response.ok) {
@@ -473,12 +501,15 @@ export default function Home() {
           "Certificate exists on-chain, but its metadata could not be loaded.",
         );
       }
-
-      setVerifyStatus(
-        `Certificate #${tokenId} is valid.`,
-      );
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Certificate verification error:",
+        error,
+      );
+
+      setCertificateOwner("");
+      setCertificateURI("");
+      setCertificateMetadata(null);
 
       setVerifyStatus(
         "Certificate not found or verification failed.",
@@ -670,11 +701,11 @@ function getPublicIpfsUrl(uri: string) {
           />
 
           <button
-            onClick={verifyCertificate}
+              onClick={() => void verifyCertificate()}
             className="bg-white text-black px-5 py-2 rounded-lg font-semibold"
           >
             Verify Certificate
-          </button>
+          </button> 
 
           {verifyStatus && (
             <p className="mt-4 font-semibold">

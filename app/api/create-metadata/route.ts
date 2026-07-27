@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 type CreateMetadataRequest = {
   recipientName: string;
   courseName: string;
@@ -42,7 +44,12 @@ function createCertificateSvg({
   courseName,
   issueDate,
   certificateId,
-}: CreateMetadataRequest) {
+  qrCodeDataUrl,
+  verificationUrl,
+}: CreateMetadataRequest & {
+  qrCodeDataUrl: string;
+  verificationUrl: string;
+}) {
   const safeName = escapeXml(recipientName);
   const safeCourse = escapeXml(courseName);
   const safeDate = escapeXml(issueDate);
@@ -297,6 +304,38 @@ function createCertificateSvg({
     Authorized Issuer
   </text>
 
+  <!-- QR code -->
+  <rect
+    x="1080"
+    y="640"
+    width="170"
+    height="170"
+    rx="8"
+    fill="#ffffff"
+    stroke="#c9952e"
+    stroke-width="3"
+  />
+
+  <image
+    href="${qrCodeDataUrl}"
+    x="1090"
+    y="650"
+    width="150"
+    height="150"
+  />
+
+  <text
+    x="1165"
+    y="835"
+    text-anchor="middle"
+    font-family="Arial, sans-serif"
+    font-size="18"
+    font-weight="700"
+    fill="#071a40"
+  >
+    Scan to Verify
+  </text>
+
   <!-- Footer -->
   <line
     x1="130"
@@ -396,12 +435,38 @@ export async function POST(request: Request) {
       );
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!appUrl) {
+      return Response.json(
+        {
+          error: "NEXT_PUBLIC_APP_URL is not configured.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const verificationUrl =
+      `${appUrl}/?tokenId=${certificateId}`;
+
+    const qrCodeDataUrl =
+      await QRCode.toDataURL(verificationUrl, {
+        width: 220,
+        margin: 1,
+        color: {
+          dark: "#071a40",
+          light: "#FFFFFF",
+        },
+      });
+
     // 1. Generate personalized SVG certificate.
     const svg = createCertificateSvg({
       recipientName,
       courseName,
       issueDate,
       certificateId,
+      qrCodeDataUrl,
+      verificationUrl,
     });
 
     // 2. Upload certificate image to Pinata.
