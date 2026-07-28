@@ -545,6 +545,10 @@ function getIpfsImageUrl(uri: string) {
   return `https://gateway.pinata.cloud/ipfs/${ipfsPath}`;
 }
 
+function getIpfsCid(uri: string) {
+  return uri.replace("ipfs://", "");
+}
+
 function getPublicIpfsUrl(uri: string) {
   if (!uri.startsWith("ipfs://")) {
     return uri;
@@ -734,16 +738,31 @@ function getPublicIpfsUrl(uri: string) {
               {certificateMetadata && (
                 <div className="overflow-hidden rounded-xl border border-gray-700 bg-gray-900">
                   {certificateMetadata.image && (
-                    <a
-                      href={getIpfsImageUrl(
-                        certificateMetadata.image,
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-4 underline"
-                    >
-                      Open Certificate Image
-                    </a>
+                    <div className="mt-4 flex flex-wrap gap-4">
+                      <a
+                        href={getIpfsImageUrl(
+                          certificateMetadata.image,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg border border-gray-600 px-4 py-2 font-medium hover:bg-gray-800"
+                      >
+                        View Certificate
+                      </a>
+
+                      <a
+                        href={`/api/download-certificate?cid=${encodeURIComponent(
+                          getIpfsCid(
+                            certificateMetadata.image,
+                          ),
+                        )}&certificateId=${encodeURIComponent(
+                          tokenId,
+                        )}`}
+                        className="rounded-lg bg-white px-4 py-2 font-semibold text-black hover:bg-gray-200"
+                      >
+                        Download Certificate
+                      </a>
+                    </div>
                   )}
 
                   <div className="p-6">
